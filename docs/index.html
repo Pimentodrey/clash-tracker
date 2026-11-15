@@ -519,7 +519,7 @@ function renderRecrutement(){
       <p class="muted" style="margin:0;line-height:1.6">Les meilleurs joueurs français du moment. Les joueurs <b style="color:var(--green)">sans clan</b> sont vos cibles prioritaires. Rappel : ${fmt(D.clan.requiredTrophies)} trophées minimum pour rejoindre le clan, et vous avez <b style="color:var(--gold2)">${50 - D.clan.members}</b> place(s) libre(s) + ${M.filter(m => m.seenDays > 7).length} inactif(s) remplaçable(s).</p></div>
     <div class="row" style="margin-bottom:14px">
       <button class="btn ${recMode === 'pol' ? 'on' : ''}" data-rm="pol">Ligue (Path of Legends)</button>
-      <button class="btn ${recMode === 'trophies' ? 'on' : ''}" data-rm="trophies">Trophées</button>
+      ${(tp.trophies || []).length ? `<button class="btn ${recMode === 'trophies' ? 'on' : ''}" data-rm="trophies">Trophées</button>` : ''}
       <button class="btn ${recFree ? 'on' : ''}" id="recFree">Sans clan uniquement (${free.length})</button>
       <input class="search" id="q-rec" placeholder="🔎 Chercher un joueur ou un clan…">
     </div>
