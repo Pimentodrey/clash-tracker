@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QG du clan — Clash Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0f1420;--panel:#171e2e;--panel2:#1e2739;--line:#2a3550;--text:#e8ecf4;--muted:#8a96b0;--gold:#f5b942;--blue:#4c8dff;--green:#3ecf8e;--red:#ff5d6c;--orange:#ff9f43;--purple:#a77bff}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+header{display:flex;align-items:center;gap:14px;padding:12px 20px;background:linear-gradient(90deg,#1a2440,#141b2c);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;flex-wrap:wrap}
+header h1{font-size:18px;margin:0;color:var(--gold)}
+nav{display:flex;gap:2px;flex-wrap:wrap}
+nav button{background:none;border:none;color:var(--muted);padding:8px 12px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600}
+nav button.active{background:var(--panel2);color:var(--text)}
+.spacer{flex:1}
+#updated{font-size:12px;color:var(--muted)}
+main{padding:18px 20px;max-width:1400px;margin:0 auto}
+.view{display:none}.view.active{display:block}
+.grid{display:grid;gap:14px}
+.g4{grid-template-columns:repeat(auto-fill,minmax(165px,1fr))}
+.g2{grid-template-columns:repeat(auto-fit,minmax(min(100%,430px),1fr))}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.card h2{font-size:15px;margin:0 0 12px}
+.card h2 small{color:var(--muted);font-weight:400;margin-left:6px}
+.stat .lbl{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+.stat .val{font-size:24px;font-weight:700;margin-top:4px}
+.stat .sub{color:var(--muted);font-size:12px;margin-top:2px}
+.section{margin-top:16px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 8px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--muted);font-weight:600;cursor:pointer;user-select:none;position:sticky;top:0;background:var(--panel);z-index:1}
+td.num,th.num{text-align:right}
+tr.click{cursor:pointer}
+tr:hover td{background:var(--panel2)}
+tr.me td{background:#f5b94214}
+.tablewrap{overflow:auto;max-height:640px}
+.tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
+.t-green{background:#3ecf8e22;color:var(--green)}.t-red{background:#ff5d6c22;color:var(--red)}.t-orange{background:#ff9f4322;color:var(--orange)}.t-blue{background:#4c8dff22;color:var(--blue)}.t-gold{background:#f5b94222;color:var(--gold)}.t-gray{background:#8a96b022;color:var(--muted)}.t-purple{background:#a77bff22;color:var(--purple)}
+.muted{color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:12px;cursor:default}
+.chip b{color:var(--gold)}
+.empty{padding:40px;text-align:center;color:var(--muted);line-height:1.6}
+.alert{background:#4c8dff18;border:1px solid #4c8dff55;color:#cfe0ff;border-radius:10px;padding:12px 14px;margin-bottom:14px;line-height:1.5}
+.bar{height:6px;background:var(--panel2);border-radius:3px;overflow:hidden;min-width:50px}
+.bar>span{display:block;height:100%;background:var(--gold)}
+.chartbox{position:relative;height:250px}
+.score{display:inline-flex;align-items:center;justify-content:center;width:38px;height:26px;border-radius:7px;font-weight:800;font-size:13px}
+.goal{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);gap:10px}
+.goal:last-child{border-bottom:none}
+.goal .big{font-size:20px;font-weight:800}
+input.search{background:var(--bg);border:1px solid var(--line);color:var(--text);padding:8px 10px;border-radius:8px;font-size:14px;width:220px}
+.btn{background:var(--panel2);color:var(--text);border:1px solid var(--line);padding:6px 12px;border-radius:8px;cursor:pointer;font-weight:600;font-size:13px}
+.btn.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+#modal{position:fixed;inset:0;background:#000a;display:none;align-items:flex-start;justify-content:center;z-index:20;overflow:auto;padding:30px 12px}
+#modal.open{display:flex}
+#modal .box{background:var(--bg);border:1px solid var(--line);border-radius:14px;max-width:980px;width:100%;padding:20px;position:relative}
+#modal .close{position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:24px;cursor:pointer}
+.deck{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.deck .c{background:var(--panel2);border-radius:8px;padding:6px;text-align:center;font-size:11px}
+.deck img{width:100%;max-width:70px;display:block;margin:0 auto 4px}
+.wl{display:flex;gap:3px;flex-wrap:wrap}.wl span{width:13px;height:13px;border-radius:3px}
+.w{background:var(--green)}.l{background:var(--red)}.d{background:var(--muted)}
+.breakdown div{display:flex;justify-content:space-between;gap:10px;padding:4px 0;font-size:13px}
+@media(max-width:600px){main{padding:12px}.stat .val{font-size:20px}header h1{font-size:16px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>⚔️ <span id="clanName">QG du clan</span></h1>
+  <nav id="nav">
+    <button data-v="accueil" class="active">Accueil</button>
+    <button data-v="membres">Membres</button>
+    <button data-v="guerre">Guerre</button>
+    <button data-v="france">France</button>
+    <button data-v="historique">Historique</button>
+  </nav>
+  <div class="spacer"></div>
+  <span id="updated">Chargement…</span>
+</header>
+<main>
+  <section class="view active" id="v-accueil"></section>
+  <section class="view" id="v-membres"></section>
+  <section class="view" id="v-guerre"></section>
+  <section class="view" id="v-france"></section>
+  <section class="view" id="v-historique"></section>
+</main>
+<div id="modal"><div class="box"><button class="close" onclick="closeModal()">×</button><div id="modalBody"></div></div></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = n => (n == null || isNaN(n)) ? '—' : Number(n).toLocaleString('fr-FR');
+const pct = (a, b) => b ? Math.round(100 * a / b) + ' %' : '—';
+const sign = n => n == null ? '—' : (n > 0 ? '+' : '') + fmt(n);
+const parseCR = s => s ? new Date(s.replace(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:$6')) : null;
+const daysAgo = d => d ? (Date.now() - d.getTime()) / 86400000 : null;
+const ago = d => { if(!d) return '—'; const m = (Date.now() - d.getTime()) / 60000; return m < 60 ? Math.max(1, Math.round(m)) + ' min' : m < 1440 ? Math.round(m / 60) + ' h' : Math.round(m / 1440) + ' j'; };
+const ROLES = {member:'Membre', elder:'Aîné', coLeader:'Chef adjoint', leader:'Chef'};
+const roleTag = r => `<span class="tag ${r==='leader'?'t-gold':r==='coLeader'?'t-orange':r==='elder'?'t-blue':'t-gray'}">${ROLES[r] || esc(r)}</span>`;
+const PERIODS = {training:'Entraînement', warDay:'Jour de bataille', colosseum:'Colisée'};
+const charts = {};
+let D, H = [], M = [];
+
+function chart(id, c){ if(charts[id]) charts[id].destroy(); const el = document.getElementById(id); if(!el || !window.Chart) return; Chart.defaults.color = '#8a96b0'; Chart.defaults.borderColor = '#2a3550'; charts[id] = new Chart(el, c); }
+function stat(l, v, s){ return `<div class="card stat"><div class="lbl">${l}</div><div class="val">${v}</div><div class="sub">${s || ''}</div></div>`; }
+function scoreBadge(s){ if(s == null) return '—'; const c = s >= 75 ? 'var(--green)' : s >= 50 ? 'var(--blue)' : s >= 30 ? 'var(--orange)' : 'var(--red)'; return `<span class="score" style="background:${c}22;color:${c}">${s}</span>`; }
+function scoreLabel(s){ return s >= 75 ? '<span class="tag t-green">Pilier</span>' : s >= 50 ? '<span class="tag t-blue">Solide</span>' : s >= 30 ? '<span class="tag t-orange">À booster</span>' : '<span class="tag t-red">À risque</span>'; }
+
+function sortableTable(cols, rows, sortKey, sortDir = -1, rowAttr){
+  const id = 't' + Math.random().toString(36).slice(2), st = {key: sortKey, dir: sortDir};
+  const render = () => {
+    const col = cols.find(c => c.key === st.key), val = r => col && col.sort ? col.sort(r) : r[st.key];
+    const sorted = [...rows].sort((a, b) => { const x = val(a), y = val(b); if(x == null) return 1; if(y == null) return -1; return (typeof x === 'string' ? x.localeCompare(y) : x - y) * st.dir; });
+    const el = document.getElementById(id); if(!el) return;
+    el.innerHTML = `<table><thead><tr>${cols.map(c => `<th class="${c.num ? 'num' : ''}" data-k="${c.key}">${c.label}${c.key === st.key ? (st.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead><tbody>${sorted.map(r => `<tr ${rowAttr ? rowAttr(r) : ''}>${cols.map(c => `<td class="${c.num ? 'num' : ''}">${c.html ? c.html(r) : esc(r[c.key])}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+    el.querySelectorAll('th').forEach(th => th.onclick = () => { const k = th.dataset.k; if(st.key === k) st.dir *= -1; else { st.key = k; st.dir = -1; } render(); });
+    el.querySelectorAll('tr[data-tag]').forEach(tr => tr.onclick = () => openMember(tr.dataset.tag));
+  };
+  setTimeout(render); return `<div class="tablewrap" id="${id}"></div>`;
+}
+
+document.querySelectorAll('#nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#nav button').forEach(x => x.classList.toggle('active', x === b));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'v-' + b.dataset.v));
+  location.hash = b.dataset.v; render(b.dataset.v);
+});
+
+/* ---------- Score des membres ---------- */
+function computeMembers(){
+  const log = D.raceLog || [], raceParts = Object.fromEntries(((D.race && D.race.clan.participants) || []).map(p => [p.tag, p]));
+  const base = D.members.map(m => {
+    const weeks = log.map(r => r.participants.find(p => p.tag === m.tag)).filter(Boolean);
+    const played = weeks.filter(p => p.decks > 0);
+    const fameTot = weeks.reduce((s, p) => s + p.fame, 0);
+    const cur = raceParts[m.tag] || {fame:0, decks:0, today:0};
+    const seen = parseCR(m.lastSeen);
+    return {...m, seen, seenDays: daysAgo(seen), weeks: weeks.length, played: played.length,
+      rate: weeks.length ? played.length / weeks.length : null, avgFame: played.length ? Math.round(fameTot / played.length) : 0,
+      curFame: cur.fame, curDecks: cur.decks, today: cur.today, warHistory: log.map(r => ({season:r.season, week:r.week, p: r.participants.find(p => p.tag === m.tag)}))};
+  });
+  const max = k => Math.max(1, ...base.map(m => m[k] || 0));
+  const mf = max('avgFame'), md = max('donations'), mt = max('trophies'), mc = max('curDecks');
+  base.forEach(m => {
+    const act = m.seenDays == null ? 0 : m.seenDays < 1 ? 1 : m.seenDays < 3 ? .7 : m.seenDays < 7 ? .3 : 0;
+    const parts = {
+      'Participation en guerre (10 sem.)': [30, m.rate == null ? .5 : m.rate],
+      'Renommée moyenne par course': [20, m.avgFame / mf],
+      'Decks joués cette semaine': [15, m.curDecks / mc],
+      'Dons cette semaine': [15, Math.min(1, m.donations / md)],
+      'Activité (dernière connexion)': [10, act],
+      'Trophées': [10, m.trophies / mt]
+    };
+    m.breakdown = Object.entries(parts).map(([k, [w, v]]) => ({k, w, pts: Math.round(w * Math.max(0, Math.min(1, v)))}));
+    m.score = m.breakdown.reduce((s, b) => s + b.pts, 0);
+  });
+  return base;
+}
+
+/* ---------- Accueil ---------- */
+function renderAccueil(){
+  const c = D.clan, me = c.tag;
+  const fr = (D.rankClans || []).find(x => x.tag === me), frw = (D.rankWar || []).find(x => x.tag === me);
+  const goalLine = (label, list, mine, scoreName) => {
+    if(!list || !list.length) return `<div class="goal"><div><b>${label}</b><div class="muted">Classement indisponible</div></div></div>`;
+    if(!mine){ const last = list[list.length - 1]; const myScore = scoreName === 'war' ? c.clanWarTrophies : c.clanScore;
+      return `<div class="goal"><div><b>${label}</b><div class="muted">Hors top ${list.length}. Il faut ${fmt(last.score)} pour y entrer.</div></div><div class="big" style="color:var(--orange)">${sign(myScore - last.score)}</div></div>`; }
+    const above = list.find(x => x.rank === mine.rank - 1), top10 = list.find(x => x.rank === 10), top1 = list[0];
+    return `<div class="goal"><div><b>${label}</b><div class="muted">${above ? `Prochain : ${esc(above.name)}, à ${fmt(above.score - mine.score)} pts` : 'Vous êtes n°1 🏆'}${mine.rank > 10 && top10 ? ` · Top 10 à ${fmt(top10.score - mine.score)} pts` : ''}${mine.rank > 1 ? ` · n°1 à ${fmt(top1.score - mine.score)} pts` : ''}</div></div><div class="big" style="color:var(--gold)">${mine.rank}ᵉ ${mine.prev && mine.prev > 0 && mine.prev !== mine.rank ? `<span style="font-size:13px;color:${mine.prev > mine.rank ? 'var(--green)' : 'var(--red)'}">${mine.prev > mine.rank ? '▲' : '▼'}${Math.abs(mine.prev - mine.rank)}</span>` : ''}</div></div>`;
+  };
+  const inactive = M.filter(m => m.seenDays > 7), risk = M.filter(m => m.score < 30 && m.role !== 'leader').sort((a, b) => a.score - b.score);
+  const stars = [...M].sort((a, b) => b.score - a.score).slice(0, 5);
+  const race = D.race, isBattle = race && (race.periodType === 'warDay' || race.periodType === 'colosseum');
+  const late = race ? M.filter(m => m.today === 0) : [];
+  const avgScore = M.length ? Math.round(M.reduce((s, m) => s + m.score, 0) / M.length) : 0;
+
+  $('#v-accueil').innerHTML = `
+    <div class="grid g4">
+      ${stat('Rang France', fr ? fr.rank + 'ᵉ' : '—', fr ? 'Score ' + fmt(c.clanScore) : 'Score ' + fmt(c.clanScore))}
+      ${stat('Rang France guerre', frw ? frw.rank + 'ᵉ' : '—', fmt(c.clanWarTrophies) + ' trophées de guerre')}
+      ${stat('Membres', c.members + '/50', inactive.length + ' inactif(s) > 7 j')}
+      ${stat('Score moyen du clan', avgScore + '/100', 'voir l\'onglet Membres')}
+      ${stat('Dons / semaine', fmt(c.donationsPerWeek), '')}
+      ${race ? stat('Guerre', PERIODS[race.periodType] || esc(race.periodType), fmt(race.clan.fame) + ' de renommée') : ''}
+    </div>
+    <div class="grid g2 section">
+      <div class="card"><h2>🎯 Objectif top France</h2>
+        ${goalLine('Classement des clans', D.rankClans, fr, 'clan')}
+        ${goalLine('Classement guerre', D.rankWar, frw, 'war')}
+        <div class="goal"><div><b>Places libres</b><div class="muted">Un clan complet et actif pèse plus lourd</div></div><div class="big" style="color:${c.members >= 48 ? 'var(--green)' : 'var(--orange)'}">${50 - c.members}</div></div>
+      </div>
+      <div class="card"><h2>⚡ À faire maintenant</h2>
+        ${isBattle ? `<p><b>${late.length}</b> membre(s) n'ont pas encore joué aujourd'hui :</p><div class="chips">${late.map(m => `<span class="chip">${esc(m.name)}</span>`).join('') || '<span class="muted">personne 🎉</span>'}</div>` : '<p class="muted">Pas de jour de bataille en ce moment.</p>'}
+        <p style="margin-top:14px"><b>À surveiller</b> (score &lt; 30) :</p>
+        <div class="chips">${risk.slice(0, 12).map(m => `<span class="chip">${esc(m.name)} <b>${m.score}</b></span>`).join('') || '<span class="muted">personne</span>'}</div>
+      </div>
+    </div>
+    <div class="grid g2 section">
+      <div class="card"><h2>🏅 Meilleurs membres <small>score global</small></h2>
+        ${stars.map((m, i) => `<div class="goal click" style="cursor:pointer" onclick="openMember('${esc(m.tag)}')"><div>${['🥇','🥈','🥉','4.','5.'][i]} <b>${esc(m.name)}</b> <span class="muted">${ROLES[m.role] || ''}</span></div>${scoreBadge(m.score)}</div>`).join('')}
+      </div>
+      <div class="card"><h2>Évolution du rang France</h2><div class="chartbox"><canvas id="c-frrank"></canvas></div></div>
+    </div>`;
+  const hh = H.filter(s => s.c.fr);
+  chart('c-frrank', {type:'line', data:{labels: hh.map(s => new Date(s.t * 1000).toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit'})), datasets:[
+    {label:'Clans', data: hh.map(s => s.c.fr), borderColor:'#f5b942', tension:.3, pointRadius:1},
+    {label:'Guerre', data: hh.map(s => s.c.frw), borderColor:'#a77bff', tension:.3, pointRadius:1}]},
+    options:{maintainAspectRatio:false, scales:{y:{reverse:true, title:{display:true, text:'Rang'}}}, plugins:{title:{display:!hh.length, text:'Se remplira au fil des relevés'}}}});
+}
+
+/* ---------- Membres ---------- */
+function renderMembres(){
+  $('#v-membres').innerHTML = `
+    <div class="card"><h2>Membres <small>clique sur un membre pour sa fiche complète</small></h2>
+      <p class="muted" style="margin-top:-4px;font-size:12px;line-height:1.5">Score /100 = participation en guerre (30) + renommée moyenne (20) + decks cette semaine (15) + dons (15) + activité (10) + trophées (10). ≥75 Pilier · ≥50 Solide · ≥30 À booster · &lt;30 À risque.</p>
+      ${sortableTable([
+        {key:'score', label:'Score', num:true, html:r => scoreBadge(r.score)},
+        {key:'name', label:'Nom', html:r => `<b>${esc(r.name)}</b> ${scoreLabel(r.score)}`},
+        {key:'role', label:'Rôle', html:r => roleTag(r.role), sort:r => ({leader:4, coLeader:3, elder:2, member:1}[r.role] || 0)},
+        {key:'trophies', label:'Trophées', num:true, html:r => fmt(r.trophies)},
+        {key:'rate', label:'Guerre', num:true, html:r => r.rate == null ? '<span class="muted">nouveau</span>' : `${r.played}/${r.weeks}`},
+        {key:'avgFame', label:'Renommée moy.', num:true, html:r => fmt(r.avgFame)},
+        {key:'curDecks', label:'Decks sem.', num:true},
+        {key:'donations', label:'Dons', num:true},
+        {key:'avgLvl', label:'Niv. cartes', num:true, html:r => r.profile && r.profile.avgLevel ? r.profile.avgLevel.toFixed(1) : '—', sort:r => r.profile && r.profile.avgLevel},
+        {key:'seenDays', label:'Vu il y a', num:true, html:r => `<span class="tag ${r.seenDays > 7 ? 't-red' : r.seenDays > 2 ? 't-orange' : 't-green'}">${ago(r.seen)}</span>`}
+      ], M, 'score', -1, r => `class="click" data-tag="${esc(r.tag)}"`)}
+    </div>
+    <div class="grid g2 section">
+      <div class="card"><h2>⬆️ Candidats à une promotion <small>membres avec score ≥ 70</small></h2>
+        <div class="chips">${M.filter(m => m.role === 'member' && m.score >= 70).map(m => `<span class="chip">${esc(m.name)} <b>${m.score}</b></span>`).join('') || '<span class="muted">Aucun pour l\'instant</span>'}</div></div>
+      <div class="card"><h2>⬇️ Gradés peu impliqués <small>aînés / adjoints avec score &lt; 40</small></h2>
+        <div class="chips">${M.filter(m => (m.role === 'elder' || m.role === 'coLeader') && m.score < 40).map(m => `<span class="chip">${esc(m.name)} <b>${m.score}</b></span>`).join('') || '<span class="muted">Aucun 👍</span>'}</div></div>
+    </div>`;
+}
+
+/* ---------- Fiche joueur ---------- */
+function openMember(tag){
+  const m = M.find(x => x.tag === tag); if(!m) return;
+  const p = m.profile || {}, b = m.battles || {};
+  $('#modalBody').innerHTML = `
+    <div style="font-size:22px;font-weight:800">${esc(m.name)} <span class="muted" style="font-size:14px;font-weight:400">${esc(m.tag)}</span></div>
+    <div class="muted" style="margin:4px 0 14px">${roleTag(m.role)} · Niveau ${m.expLevel} · ${esc(p.arena || '')} · vu il y a ${ago(m.seen)}</div>
+    <div class="grid g4">
+      ${stat('Score', m.score + '/100', '')}
+      ${stat('Trophées', fmt(m.trophies), 'Record ' + fmt(p.bestTrophies))}
+      ${stat('Victoires', fmt(p.wins), 'Taux ' + pct(p.wins, (p.wins || 0) + (p.losses || 0)))}
+      ${stat('Cartes', fmt(p.cards), (p.maxed || 0) + ' au max · niv. moyen ' + (p.avgLevel || '—'))}
+    </div>
+    <div class="grid g2 section">
+      <div class="card"><h2>Détail du score</h2><div class="breakdown">${m.breakdown.map(x => `<div><span>${x.k}</span><span><b>${x.pts}</b><span class="muted">/${x.w}</span></span></div>`).join('')}</div></div>
+      <div class="card"><h2>Deck actuel</h2><div class="deck">${(p.deck || []).map(c => `<div class="c">${c.i ? `<img src="${esc(c.i)}" alt="">` : ''}${esc(c.n)}<br><span class="muted">niv. ${c.l}${c.evo ? ' · évo' : ''}</span></div>`).join('') || '<span class="muted">—</span>'}</div></div>
+    </div>
+    <div class="grid g2 section">
+      <div class="card"><h2>25 derniers combats <small>${b.w || 0}V / ${b.l || 0}D (${pct(b.w, (b.w || 0) + (b.l || 0))})</small></h2>
+        <table>${(b.recent || []).map(x => `<tr><td>${ago(parseCR(x.t))}</td><td>${esc(x.m)}</td><td><span class="tag ${x.r === 'w' ? 't-green' : x.r === 'l' ? 't-red' : 't-gray'}">${x.c}</span></td><td class="muted">${esc(x.o)}</td></tr>`).join('')}</table>
+        ${(b.decks || []).length ? `<p class="muted" style="margin-top:10px">Deck le plus joué : ${esc(b.decks[0].deck)} (${b.decks[0].w}/${b.decks[0].n} victoires)</p>` : ''}</div>
+      <div class="card"><h2>Historique en guerre</h2>
+        <table><thead><tr><th>Semaine</th><th class="num">Decks</th><th class="num">Renommée</th></tr></thead><tbody>
+        ${m.warHistory.map(w => `<tr><td>S${w.season} · S${w.week + 1}</td><td class="num">${w.p ? `<span class="tag ${w.p.decks >= 12 ? 't-green' : w.p.decks > 0 ? 't-orange' : 't-red'}">${w.p.decks}</span>` : '<span class="muted">pas là</span>'}</td><td class="num">${w.p ? fmt(w.p.fame) : ''}</td></tr>`).join('')}
+        </tbody></table></div>
+    </div>`;
+  $('#modal').classList.add('open');
+}
+function closeModal(){ $('#modal').classList.remove('open'); }
+$('#modal').onclick = e => { if(e.target.id === 'modal') closeModal(); };
+document.addEventListener('keydown', e => { if(e.key === 'Escape') closeModal(); });
+
+/* ---------- Guerre ---------- */
+function renderGuerre(){
+  const race = D.race, log = D.raceLog || [];
+  let html = '';
+  if(race){
+    const parts = M.map(m => ({tag:m.tag, name:m.name, today:m.today, decks:m.curDecks, fame:m.curFame}));
+    const isBattle = race.periodType === 'warDay' || race.periodType === 'colosseum';
+    const today = parts.reduce((s, p) => s + p.today, 0);
+    const standings = [...race.clans].sort((a, b) => b.fame - a.fame), max = standings[0] ? standings[0].fame || 1 : 1;
+    html += `<div class="grid g4">
+      ${stat('Période', PERIODS[race.periodType] || esc(race.periodType), race.sectionIndex != null ? 'Semaine ' + (race.sectionIndex + 1) : '')}
+      ${stat('Renommée', fmt(race.clan.fame), '')}
+      ${stat('Decks joués aujourd\'hui', `${today}/${parts.length * 4}`, pct(today, parts.length * 4))}
+      ${stat('Sans deck aujourd\'hui', parts.filter(p => !p.today).length, isBattle ? 'à relancer' : 'entraînement')}
+    </div>
+    <div class="grid g2 section">
+      <div class="card"><h2>Course en cours</h2><table><tbody>${standings.map((s, i) => `<tr class="${s.tag === D.clan.tag ? 'me' : ''}"><td>${i + 1}</td><td>${esc(s.name)}</td><td class="num">${fmt(s.fame)}</td><td style="width:35%"><div class="bar"><span style="width:${100 * s.fame / max}%"></span></div></td></tr>`).join('')}</tbody></table></div>
+      <div class="card"><h2>À relancer <small>0 deck aujourd'hui</small></h2>${isBattle ? `<div class="chips">${parts.filter(p => !p.today).map(p => `<span class="chip">${esc(p.name)}</span>`).join('') || '<span class="muted">Tout le monde a joué 🎉</span>'}</div>
+        <p class="muted" style="font-size:12px;margin-top:12px">Astuce : copie la liste pour la poster sur votre groupe.</p><button class="btn" id="copyLate">Copier la liste</button>` : '<p class="muted">Pas de bataille aujourd\'hui.</p>'}</div>
+    </div>
+    <div class="card section"><h2>Participation cette semaine</h2>${sortableTable([
+      {key:'name', label:'Membre', html:r => esc(r.name)},
+      {key:'today', label:'Aujourd\'hui', num:true, html:r => `<span class="tag ${r.today >= 4 ? 't-green' : r.today > 0 ? 't-orange' : 't-red'}">${r.today}/4</span>`},
+      {key:'decks', label:'Decks semaine', num:true}, {key:'fame', label:'Renommée', num:true, html:r => fmt(r.fame)}
+    ], parts, 'fame', -1, r => `class="click" data-tag="${esc(r.tag)}"`)}</div>`;
+    setTimeout(() => { const b = $('#copyLate'); if(b) b.onclick = () => { const txt = '⚔️ Decks de guerre pas encore joués aujourd\'hui : ' + parts.filter(p => !p.today).map(p => p.name).join(', '); navigator.clipboard.writeText(txt).then(() => b.textContent = 'Copié ✓').catch(() => b.textContent = 'Copie impossible'); }; });
+  }
+  if(log.length){
+    html += `<div class="grid g2 section">
+      <div class="card"><h2>Dernières courses</h2><div class="chartbox"><canvas id="c-race"></canvas></div></div>
+      <div class="card"><h2>Assiduité <small>${log.length} dernières courses</small></h2>${sortableTable([
+        {key:'name', label:'Membre', html:r => esc(r.name)},
+        {key:'rate', label:'Présence', num:true, html:r => r.rate == null ? '<span class="muted">nouveau</span>' : `<div class="row" style="justify-content:flex-end"><div class="bar" style="width:70px"><span style="width:${100 * r.rate}%;background:${r.rate >= .8 ? 'var(--green)' : r.rate >= .5 ? 'var(--orange)' : 'var(--red)'}"></span></div>${r.played}/${r.weeks}</div>`},
+        {key:'avgFame', label:'Renommée moy.', num:true, html:r => fmt(r.avgFame)}
+      ], M, 'rate', -1, r => `class="click" data-tag="${esc(r.tag)}"`)}</div>
+    </div>`;
+    setTimeout(() => { const rev = [...log].reverse(); chart('c-race', {type:'bar', data:{labels: rev.map(r => `S${r.season}·${r.week + 1}`), datasets:[
+      {type:'bar', label:'Renommée', data: rev.map(r => r.fame), backgroundColor:'#4c8dff', yAxisID:'y'},
+      {type:'line', label:'Rang', data: rev.map(r => r.rank), borderColor:'#f5b942', backgroundColor:'#f5b942', yAxisID:'y1'}]},
+      options:{maintainAspectRatio:false, scales:{y1:{position:'right', reverse:true, min:1, max:5, ticks:{stepSize:1}, grid:{display:false}}}}}); });
+  }
+  $('#v-guerre').innerHTML = html || '<div class="empty">Pas de données de guerre.</div>';
+}
+
+/* ---------- France ---------- */
+let frMode = 'clans';
+function renderFrance(){
+  const list = frMode === 'clans' ? D.rankClans : D.rankWar, me = D.clan.tag;
+  const mine = (list || []).find(x => x.tag === me);
+  const focus = mine ? list.filter(x => Math.abs(x.rank - mine.rank) <= 5) : [];
+  $('#v-france').innerHTML = `
+    <div class="row" style="margin-bottom:14px">
+      <button class="btn ${frMode === 'clans' ? 'on' : ''}" data-m="clans">Classement des clans</button>
+      <button class="btn ${frMode === 'war' ? 'on' : ''}" data-m="war">Classement guerre</button>
+      <span class="muted">${D.country ? esc(D.country.name) : ''} · top ${(list || []).length}</span>
+    </div>
+    ${!list || !list.length ? '<div class="empty">Classement indisponible pour le moment.</div>' : `
+    ${mine ? `<div class="card" style="margin-bottom:14px"><h2>Autour de vous</h2><table><thead><tr><th>Rang</th><th>Clan</th><th class="num">Score</th><th class="num">Écart</th><th class="num">Membres</th></tr></thead><tbody>
+      ${focus.map(x => `<tr class="${x.tag === me ? 'me' : ''}"><td>${x.rank}ᵉ</td><td>${esc(x.name)}</td><td class="num">${fmt(x.score)}</td><td class="num" style="color:${x.score > mine.score ? 'var(--red)' : x.score < mine.score ? 'var(--green)' : 'var(--muted)'}">${x.tag === me ? '' : sign(x.score - mine.score)}</td><td class="num">${x.members ?? '—'}</td></tr>`).join('')}
+    </tbody></table></div>` : `<div class="alert">Votre clan n'est pas encore dans ce top ${list.length}. Le dernier clan classé a ${fmt(list[list.length - 1].score)} points.</div>`}
+    <div class="card"><h2>Top ${list.length}</h2>${sortableTable([
+      {key:'rank', label:'Rang', num:true, html:r => r.rank + 'ᵉ' + (r.prev > 0 && r.prev !== r.rank ? ` <span style="color:${r.prev > r.rank ? 'var(--green)' : 'var(--red)'}">${r.prev > r.rank ? '▲' : '▼'}</span>` : '')},
+      {key:'name', label:'Clan', html:r => esc(r.name) + (r.tag === me ? ' <span class="tag t-gold">nous</span>' : '')},
+      {key:'score', label:'Score', num:true, html:r => fmt(r.score)},
+      {key:'members', label:'Membres', num:true}
+    ], list, 'rank', 1, r => r.tag === me ? 'class="me"' : '')}</div>`}`;
+  document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { frMode = b.dataset.m; renderFrance(); });
+}
+
+/* ---------- Historique ---------- */
+let range = 30;
+function renderHistorique(){
+  const since = range ? Date.now() / 1000 - range * 86400 : 0, hh = H.filter(s => s.t >= since);
+  if(hh.length < 2){ $('#v-historique').innerHTML = `<div class="empty">L'historique se remplit automatiquement toutes les heures.<br>Reviens dans quelques heures pour voir les premières courbes !</div>`; return; }
+  const labels = hh.map(s => new Date(s.t * 1000).toLocaleString('fr-FR', {day:'2-digit', month:'2-digit', hour:'2-digit'}));
+  const first = hh[0], last = hh[hh.length - 1];
+  const prog = Object.entries(last.m).map(([t, v]) => { const f = first.m[t]; return {tag:t, name:v[0], tr:v[1], d: f ? v[1] - f[1] : null, isNew: !f}; });
+  const left = Object.entries(first.m).filter(([t]) => !last.m[t]).map(([, v]) => v[0]);
+  $('#v-historique').innerHTML = `
+    <div class="row" style="margin-bottom:14px">${[[7, '7 jours'], [30, '30 jours'], [90, '90 jours'], [0, 'Tout']].map(([v, l]) => `<button class="btn ${v === range ? 'on' : ''}" data-r="${v}">${l}</button>`).join('')}<span class="muted">${hh.length} relevés</span></div>
+    <div class="grid g4">
+      ${stat('Score du clan', sign(last.c.s - first.c.s), 'sur la période')}
+      ${stat('Trophées de guerre', sign(last.c.w - first.c.w), 'sur la période')}
+      ${stat('Rang France', last.c.fr && first.c.fr ? sign(first.c.fr - last.c.fr) + ' places' : '—', '')}
+      ${stat('Arrivées / départs', `${prog.filter(p => p.isNew).length} / ${left.length}`, '')}
+    </div>
+    <div class="grid g2 section">
+      <div class="card"><h2>Score du clan & trophées de guerre</h2><div class="chartbox"><canvas id="h1"></canvas></div></div>
+      <div class="card"><h2>Taille du clan</h2><div class="chartbox"><canvas id="h2"></canvas></div></div>
+    </div>
+    <div class="grid g2 section">
+      <div class="card"><h2>Progression des membres <small>trophées</small></h2>${sortableTable([
+        {key:'name', label:'Membre', html:r => esc(r.name) + (r.isNew ? ' <span class="tag t-blue">nouveau</span>' : '')},
+        {key:'tr', label:'Trophées', num:true, html:r => fmt(r.tr)},
+        {key:'d', label:'Évolution', num:true, html:r => `<span style="color:${r.d > 0 ? 'var(--green)' : r.d < 0 ? 'var(--red)' : 'var(--muted)'}">${sign(r.d)}</span>`}
+      ], prog, 'd', -1, r => `class="click" data-tag="${esc(r.tag)}"`)}</div>
+      <div class="card"><h2>Départs sur la période</h2><div class="chips">${left.map(n => `<span class="chip">${esc(n)}</span>`).join('') || '<span class="muted">Aucun</span>'}</div></div>
+    </div>`;
+  document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { range = +b.dataset.r; renderHistorique(); });
+  chart('h1', {type:'line', data:{labels, datasets:[
+    {label:'Score', data: hh.map(s => s.c.s), borderColor:'#4c8dff', tension:.3, pointRadius:0, yAxisID:'y'},
+    {label:'Trophées de guerre', data: hh.map(s => s.c.w), borderColor:'#a77bff', tension:.3, pointRadius:0, yAxisID:'y1'}]},
+    options:{maintainAspectRatio:false, scales:{y1:{position:'right', grid:{display:false}}}}});
+  chart('h2', {type:'line', data:{labels, datasets:[{label:'Membres', data: hh.map(s => s.c.m), borderColor:'#3ecf8e', stepped:true, pointRadius:0}]}, options:{maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{suggestedMin:30, suggestedMax:50}}}});
+}
+
+function render(v){ ({accueil:renderAccueil, membres:renderMembres, guerre:renderGuerre, france:renderFrance, historique:renderHistorique})[v](); }
+
+(async () => {
+  try{
+    const [a, b] = await Promise.all([fetch('data/latest.json?' + Date.now()), fetch('data/history.json?' + Date.now())]);
+    if(!a.ok) throw 0;
+    D = await a.json(); H = b.ok ? await b.json() : [];
+  }catch(e){
+    $('#v-accueil').innerHTML = '<div class="empty">Les données ne sont pas encore disponibles.<br>La première collecte arrive dans moins d\'une heure.</div>';
+    $('#updated').textContent = ''; return;
+  }
+  M = computeMembers();
+  $('#clanName').textContent = D.clan.name;
+  document.title = D.clan.name + ' — QG du clan';
+  const up = new Date(D.updated);
+  $('#updated').textContent = 'Données du ' + up.toLocaleDateString('fr-FR') + ' à ' + up.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+  const start = (location.hash || '').slice(1);
+  const btn = document.querySelector(`#nav button[data-v="${start}"]`);
+  if(btn) btn.click(); else render('accueil');
+})();
+</script>
+</body>
+</html>
