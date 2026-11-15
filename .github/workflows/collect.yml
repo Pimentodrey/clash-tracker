@@ -24,6 +24,7 @@ jobs:
       - name: Récupérer les données
         env:
           CR_TOKEN: ${{ secrets.CR_TOKEN }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: python scripts/collect.py
       - name: Enregistrer
         run: |

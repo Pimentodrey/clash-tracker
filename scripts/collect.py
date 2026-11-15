@@ -120,10 +120,12 @@ def main():
     country = cfg.get("country_code", "FR")
     locs = safe("/locations?limit=300", {"items": []})
     loc = next((l for l in locs.get("items", []) if l.get("countryCode") == country), None)
-    rank_clans = rank_war = []
+    rank_clans = rank_war = top_pol = top_tr = []
     if loc:
         rank_clans = (safe(f"/locations/{loc['id']}/rankings/clans?limit=200", {"items": []}) or {}).get("items", [])
         rank_war = (safe(f"/locations/{loc['id']}/rankings/clanwars?limit=200", {"items": []}) or {}).get("items", [])
+        top_pol = (safe(f"/locations/{loc['id']}/pathoflegend/players?limit=200", {"items": []}) or {}).get("items", [])
+        top_tr = (safe(f"/locations/{loc['id']}/rankings/players?limit=200", {"items": []}) or {}).get("items", [])
 
     # Profil + journal de chaque membre (en parallèle, gentiment)
     members = clan.get("memberList") or []
@@ -170,6 +172,12 @@ def main():
         "raceLog": slim_race_log(racelog.get("items", [])),
         "rankClans": slim_rank(rank_clans),
         "rankWar": slim_rank(rank_war),
+        "topPlayers": {
+            "pol": [{"tag": p.get("tag"), "name": p.get("name"), "rank": p.get("rank"), "elo": p.get("eloRating"),
+                     "lvl": p.get("expLevel"), "clan": (p.get("clan") or {}).get("name"), "clanTag": (p.get("clan") or {}).get("tag")} for p in top_pol],
+            "trophies": [{"tag": p.get("tag"), "name": p.get("name"), "rank": p.get("rank"), "trophies": p.get("trophies"),
+                          "lvl": p.get("expLevel"), "clan": (p.get("clan") or {}).get("name"), "clanTag": (p.get("clan") or {}).get("tag")} for p in top_tr],
+        },
     }
     os.makedirs(DATA, exist_ok=True)
     json.dump(latest, open(os.path.join(DATA, "latest.json"), "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
@@ -203,7 +211,35 @@ def main():
                 kept.append(s)
     history = list(reversed(kept))[-2000:]
     json.dump(history, open(hpath, "w", encoding="utf-8"), ensure_ascii=False, separators=(",", ":"))
-    print(f"OK : {len(members)} membres, rang France {fr_rank}, guerre {fr_war}, {len(history)} relevés")
+    print(f"OK : {len(members)} membres, rang France {fr_rank}, guerre {fr_war}, {len(history)} relevés, "
+          f"top joueurs {len(top_pol)}/{len(top_tr)}")
+    discord_reminder(cfg, latest, now)
+
+
+def discord_reminder(cfg, latest, now):
+    """Poste la liste des membres sans deck joué, aux heures choisies, les jours de guerre."""
+    hook = os.environ.get("DISCORD_WEBHOOK", "").strip()
+    race = latest.get("race") or {}
+    hours = cfg.get("discord_reminder_hours_utc", [12, 18])
+    if not hook or now.hour not in hours or race.get("periodType") not in ("warDay", "colosseum"):
+        return
+    current = {m["tag"] for m in latest["members"]}
+    late = [p for p in race.get("clan", {}).get("participants", []) if p["tag"] in current and p.get("today", 0) < 4]
+    late.sort(key=lambda p: p.get("today", 0))
+    if not late:
+        msg = "⚔️ **Tous les decks de guerre ont été joués aujourd'hui.** Bravo les Lames d'Or ! 🥇"
+    else:
+        lines = [f"• {p['name']} — {p.get('today', 0)}/4" for p in late[:40]]
+        site = cfg.get("site_url", "")
+        msg = (f"⚔️ **Rappel guerre** : {len(late)} membre(s) n'ont pas joué tous leurs decks aujourd'hui.\n"
+               + "\n".join(lines) + (f"\n\n📊 {site}" if site else ""))
+    body = json.dumps({"username": "Les Lames d'Or — QG", "content": msg[:1950]}).encode()
+    try:
+        urllib.request.urlopen(urllib.request.Request(hook, data=body, headers={"Content-Type": "application/json",
+                                                                                  "User-Agent": "clash-tracker"}), timeout=15)
+        print("Rappel Discord envoyé")
+    except Exception as e:
+        print("  (Discord ignoré)", e, file=sys.stderr)
 
 
 if __name__ == "__main__":
