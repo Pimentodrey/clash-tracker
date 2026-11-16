@@ -187,6 +187,7 @@ const TIERS = [[75, 'Lame d\'Or', 'r-or', 'var(--gold2)'], [50, 'Lame d\'Argent'
 const tierOf = s => TIERS.find(t => s >= t[0]);
 const rankBadge = s => { const t = tierOf(s); return `<span class="rank ${t[2]}">${BLADE_ICO}${t[1]}</span>`; };
 const scoreBadge = s => { if(s == null) return '—'; const c = tierOf(s)[3]; return `<span class="score" style="background:color-mix(in srgb, ${c} 16%, transparent);color:${c}">${s}</span>`; };
+const chk = v => v == null ? '<span class="muted">—</span>' : ['❌', '🟠', '✅'][v];
 const charts = {};
 let D, H = [], M = [], ME = '';
 
@@ -245,6 +246,9 @@ function computeMembers(){
       ['Trophées', 10, m.trophies / mt]];
     m.breakdown = parts.map(([k, w, v]) => ({k, w, pts: Math.round(w * Math.max(0, Math.min(1, v)))}));
     m.score = m.breakdown.reduce((s, b) => s + b.pts, 0);
+    m.chkWar = m.rate == null ? (m.curDecks > 0 ? 2 : null) : m.rate >= .8 ? 2 : m.rate >= .5 ? 1 : 0;
+    m.chkDon = md < 50 ? null : m.donations >= md * .3 ? 2 : m.donations > 0 ? 1 : 0;
+    m.chkAct = m.seenDays == null ? 0 : m.seenDays < 2 ? 2 : m.seenDays < 7 ? 1 : 0;
   });
   return base.sort((a, b) => b.score - a.score).map((m, i) => ({...m, pos: i + 1}));
 }
@@ -323,22 +327,29 @@ function renderOrdre(){
   $('#v-ordre').innerHTML = `
     <div class="card gold">
       <div class="row" style="justify-content:space-between;margin-bottom:6px"><h2 style="margin:0">⚜️ L'Ordre des Lames <small>clique sur un membre pour sa fiche</small></h2><input class="search" id="q-ordre" placeholder="🔎 Chercher un membre…"></div>
-      <p class="muted" style="font-size:12px;line-height:1.6;margin:6px 0 10px">Score /100 = participation en guerre (30) + renommée moyenne (20) + decks cette semaine (15) + dons (15) + activité (10) + trophées (10).<br>
-      ${TIERS.map(t => `<span class="rank ${t[2]}">${BLADE_ICO}${t[1]}</span> ${t[0] ? '≥ ' + t[0] : '< 30'}`).join(' &nbsp; ')}</p>
+      <div class="grid g3" style="margin:8px 0 14px">
+        <div class="chip" style="padding:12px;line-height:1.5"><b style="font-size:15px">C'est quoi la note ?</b><br>Une note sur 100 qui dit si un membre <b>aide le clan</b>. Plus elle est haute, mieux c'est.</div>
+        <div class="chip" style="padding:12px;line-height:1.5"><b style="font-size:15px">Comment elle monte ?</b><br>⚔️ Jouer ses decks de guerre <span class="muted">(le plus important, 65 pts)</span><br>🎁 Donner des cartes <span class="muted">(15 pts)</span> · 🟢 Se connecter <span class="muted">(10 pts)</span> · 🏆 Trophées <span class="muted">(10 pts)</span></div>
+        <div class="chip" style="padding:12px;line-height:1.5"><b style="font-size:15px">Les grades</b><br>${TIERS.map(t => `<span class="rank ${t[2]}">${BLADE_ICO}${t[1]}</span> ${t[0] ? t[0] + '+' : 'moins de 30'}`).join('<br>')}</div>
+      </div>
       ${sortableTable([
         {key:'pos', label:'#', num:true, sort:r => -r.pos},
         {key:'name', label:'Membre', html:r => `<b>${esc(r.name)}</b>`},
         {key:'score', label:'Score', num:true, html:r => scoreBadge(r.score)},
         {key:'tier', label:'Grade', html:r => rankBadge(r.score), sort:r => r.score},
+        {key:'chkWar', label:'⚔️ Guerre', html:r => chk(r.chkWar), sort:r => r.chkWar},
+        {key:'chkDon', label:'🎁 Dons', html:r => chk(r.chkDon), sort:r => r.chkDon},
+        {key:'chkAct', label:'🟢 Actif', html:r => chk(r.chkAct), sort:r => r.chkAct},
         {key:'role', label:'Rôle', html:r => roleTag(r.role), sort:r => ({leader:4, coLeader:3, elder:2, member:1}[r.role] || 0)},
         {key:'trophies', label:'Trophées', num:true, html:r => fmt(r.trophies)},
-        {key:'rate', label:'Guerre', num:true, html:r => r.rate == null ? '<span class="muted">nouveau</span>' : `${r.played}/${r.weeks}`},
+        {key:'rate', label:'Guerres jouées', num:true, html:r => r.rate == null ? '<span class="muted">nouveau</span>' : `${r.played}/${r.weeks}`},
         {key:'avgFame', label:'Renommée moy.', num:true, html:r => fmt(r.avgFame)},
         {key:'curDecks', label:'Decks sem.', num:true},
         {key:'donations', label:'Dons', num:true},
         {key:'avgLvl', label:'Niv. cartes', num:true, html:r => r.profile && r.profile.avgLevel ? r.profile.avgLevel.toFixed(1) : '—', sort:r => r.profile && r.profile.avgLevel},
         {key:'seenDays', label:'Vu il y a', num:true, html:r => `<span class="tag ${r.seenDays > 7 ? 't-red' : r.seenDays > 2 ? 't-orange' : 't-green'}">${ago(r.seen)}</span>`, sort:r => -r.seenDays}
       ], M, 'pos', -1, r => `class="click" data-tag="${esc(r.tag)}"`, 'q-ordre')}
+      <p class="muted" style="font-size:12px;margin-bottom:0">✅ au top · 🟠 peut mieux faire · ❌ à relancer. ⚔️ Guerre = joue la guerre presque chaque semaine. 🎁 Dons = donne des cartes cette semaine. 🟢 Actif = connecté depuis moins de 2 jours.</p>
     </div>
     <div class="grid g3 section">
       <div class="card"><h2>⬆️ À adouber <small>membres ≥ 60</small></h2>

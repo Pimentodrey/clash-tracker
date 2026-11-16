@@ -198,7 +198,10 @@ def main():
               "fame": (latest["race"] or {}).get("clan", {}).get("fame")},
         "m": {m["tag"]: [m["name"], m.get("trophies"), m.get("donations"), parts.get(m["tag"], {}).get("fame", 0)] for m in members},
     }
-    history.append(snap)
+    if history and snap["t"] - history[-1]["t"] < 45 * 60:
+        history[-1] = snap  # un relevé max par ~heure
+    else:
+        history.append(snap)
     cutoff = snap["t"] - 7 * 86400
     kept, seen_days = [], set()
     for s in reversed(history):
