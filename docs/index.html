@@ -124,6 +124,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:20px}
     </a>
     <nav id="nav">
       <button data-v="accueil" class="active">Accueil</button>
+      <button data-v="op14">Opération 14 000</button>
       <button data-v="ordre">L'Ordre</button>
       <button data-v="guerre">Guerre</button>
       <button data-v="pantheon">Panthéon</button>
@@ -137,6 +138,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:20px}
 </header>
 <main>
   <section class="view active" id="v-accueil"></section>
+  <section class="view" id="v-op14"></section>
   <section class="view" id="v-ordre"></section>
   <section class="view" id="v-guerre"></section>
   <section class="view" id="v-pantheon"></section>
@@ -319,6 +321,61 @@ function copyLate(b){
   const late = M.filter(m => m.today < 4).sort((a, b) => a.today - b.today);
   const txt = `⚔️ Les Lames d'Or, à vos lames ! Decks de guerre pas encore joués aujourd'hui :\n${late.map(m => `• ${m.name} (${m.today}/4)`).join('\n')}`;
   navigator.clipboard.writeText(txt).then(() => b.textContent = 'Copié ✓').catch(() => b.textContent = 'Copie impossible');
+}
+
+
+/* ---------- Opération 14 000 ---------- */
+const MAXT = 14000;
+const W = [...Array(10).fill(.5), ...Array(10).fill(.25), ...Array(10).fill(.12), ...Array(10).fill(.1), ...Array(10).fill(.03)];
+const clanScoreOf = t => [...t].sort((a, b) => b - a).slice(0, 50).reduce((s, v, i) => s + v * W[i], 0);
+function renderOp14(){
+  const base = M.map(m => m.trophies), now = clanScoreOf(base);
+  const offset = D.clan.clanScore - now;          // petit écart d'arrondi avec le score officiel
+  const target = (D.rankClans && D.rankClans.length) ? D.rankClans[D.rankClans.length - 1].score : 139014;
+  const official = D.clan.clanScore, gapAll = target - official;
+  const rows = M.map((m, i) => {
+    const t = [...base]; t[i] = Math.max(t[i], MAXT);
+    const gain = Math.round(clanScoreOf(t) - now);
+    const pos = [...base].sort((a, b) => b - a).indexOf(m.trophies);
+    return {...m, miss: Math.max(0, MAXT - m.trophies), gain, per100: Math.round(W[pos] * 100), done: m.trophies >= MAXT, inactive: m.seenDays > 7};
+  });
+  const slots = 50 - M.length, slotGain = Math.round(clanScoreOf([...base, MAXT]) - now);
+  const inactive = rows.filter(r => r.inactive && r.role !== 'leader');
+  const replaceGain = inactive.length ? Math.round(clanScoreOf([...base.filter((v, i) => !rows[i].inactive || rows[i].role === 'leader'), ...Array(inactive.length).fill(MAXT)]) - now) : 0;
+  const full = Math.round(MAXT * 10 + offset);
+  const at14 = rows.filter(r => r.done).length;
+  const pctProg = Math.max(0, Math.min(100, 100 * (official - 100000) / (target - 100000)));
+  const climb = rows.filter(r => !r.done && !r.inactive).sort((a, b) => a.miss - b.miss);
+  $('#v-op14').innerHTML = `
+    <div class="card gold" style="margin-bottom:14px">
+      <div class="serif" style="font-size:22px;font-weight:800;color:var(--gold2)">🏔️ Opération 14 000</div>
+      <p class="muted" style="margin:6px 0 14px;line-height:1.6">Le score du clan dépend des trophées des membres. Pour entrer dans le <b style="color:var(--text)">top ${(D.rankClans || []).length || 200} France</b>, il faut <b style="color:var(--gold2)">${fmt(target)}</b> points, soit presque tout le clan à 14 000 trophées.</p>
+      <div class="row" style="justify-content:space-between"><b>${fmt(official)} pts</b><b style="color:var(--gold2)">objectif ${fmt(target)}</b></div>
+      <div class="bar" style="height:14px;margin:6px 0"><span style="width:${pctProg}%"></span></div>
+      <div class="muted">${gapAll > 0 ? `Il manque <b style="color:var(--gold2)">${fmt(gapAll)}</b> points.` : '🏆 Vous êtes dans le top France !'} · ${at14} membre(s) déjà à 14 000 · maximum possible ${fmt(full)} pts</div>
+    </div>
+    <div class="grid g3">
+      <div class="card stat"><div class="lbl">🧗 Faire grimper les actifs</div><div class="val g">+${fmt(Math.round(clanScoreOf(rows.map(r => r.inactive ? r.trophies : Math.max(r.trophies, MAXT))) - now))}</div><div class="sub">si tous les membres actifs atteignent 14 000</div></div>
+      <div class="card stat"><div class="lbl">🚪 Remplacer les ${inactive.length} inactifs</div><div class="val g">+${fmt(replaceGain)}</div><div class="sub">par des joueurs à 14 000</div></div>
+      <div class="card stat"><div class="lbl">➕ Remplir ${slots} place(s) vide(s)</div><div class="val g">+${fmt(slotGain)}</div><div class="sub">pour UN joueur à 14 000 recruté</div></div>
+    </div>
+    <div class="card section"><h2>Qui doit grimper ? <small>du plus proche de 14 000 au plus loin</small></h2>
+      <p class="muted" style="font-size:12px;margin-top:-4px;line-height:1.6">« +100 🏆 = » : ce que rapporte au clan chaque tranche de 100 trophées gagnés par ce membre. Les membres classés 11ᵉ à 20ᵉ du clan comptent <b style="color:var(--gold2)">2 fois plus</b> que les 21ᵉ à 40ᵉ, et 8 fois plus que les derniers.<br>« Rapporte » : ce que gagne le clan si ce membre atteint 14 000.</p>
+      ${sortableTable([
+        {key:'name', label:'Membre', html:r => `<b>${esc(r.name)}</b>${r.inactive ? ' <span class="tag t-red">inactif</span>' : ''}`},
+        {key:'trophies', label:'Trophées', num:true, html:r => fmt(r.trophies)},
+        {key:'prog', label:'Vers 14 000', html:r => `<div class="bar" style="width:140px"><span style="width:${Math.min(100, 100 * r.trophies / MAXT)}%"></span></div>`, sort:r => r.trophies},
+        {key:'miss', label:'Il manque', num:true, html:r => r.done ? '<span class="tag t-green">✅ fait</span>' : fmt(r.miss), sort:r => r.done ? 1e9 : r.miss},
+        {key:'per100', label:'+100 🏆 =', num:true, html:r => r.done ? '—' : `+${r.per100} pts`},
+        {key:'gain', label:'Rapporte au clan', num:true, html:r => r.done ? '—' : `<b style="color:var(--gold2)">+${fmt(r.gain)}</b>`},
+        {key:'trGain', label:'7 derniers jours', num:true, html:r => r.trGain == null ? '<span class="muted">bientôt</span>' : `<span style="color:${r.trGain > 0 ? 'var(--green)' : r.trGain < 0 ? 'var(--red)' : 'var(--muted)'}">${sign(r.trGain)}</span>`}
+      ], rows, 'miss', 1, r => `class="click" data-tag="${esc(r.tag)}"`)}
+    </div>
+    <div class="card section"><h2>📣 Message de motivation <small>à poster dans le chat du clan</small></h2>
+      <p style="margin-top:0;line-height:1.6" id="op14msg">🏔️ OPÉRATION 14 000 ! On vise le top 200 France 🇫🇷 Il nous manque ${fmt(Math.max(0, gapAll))} points. Les plus proches du sommet : ${climb.slice(0, 6).map(r => `${r.name} (encore ${fmt(r.miss)})`).join(', ')}. Chaque trophée compte, on grimpe ensemble ⚔️</p>
+      <button class="btn" id="copyOp14">📋 Copier le message</button>
+    </div>`;
+  $('#copyOp14').onclick = () => navigator.clipboard.writeText($('#op14msg').textContent).then(() => $('#copyOp14').textContent = 'Copié ✓').catch(() => $('#copyOp14').textContent = 'Copie impossible');
 }
 
 /* ---------- L'Ordre (membres) ---------- */
@@ -584,7 +641,7 @@ function renderHistorique(){
   chart('h2', {type:'line', data:{labels, datasets:[{label:'Membres', data: hh.map(s => s.c.m), borderColor:'#f4ecd8', stepped:true, pointRadius:0}]}, options:{maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{suggestedMin:30, suggestedMax:50}}}});
 }
 
-function render(v){ ({accueil:renderAccueil, ordre:renderOrdre, guerre:renderGuerre, pantheon:renderPantheon, france:renderFrance, recrutement:renderRecrutement, historique:renderHistorique})[v](); }
+function render(v){ ({accueil:renderAccueil, op14:renderOp14, ordre:renderOrdre, guerre:renderGuerre, pantheon:renderPantheon, france:renderFrance, recrutement:renderRecrutement, historique:renderHistorique})[v](); }
 
 (async () => {
   try{
