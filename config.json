@@ -1,6 +1,9 @@
 {
   "clan_tag": "#Q9QQVGVC",
   "country_code": "FR",
-  "site_url": "https://pimentodrey.github.io/clash-tracker/",
-  "discord_reminder_hours_utc": [12, 18]
+  "site_url": "",
+  "discord_reminder_hours_utc": [
+    12,
+    18
+  ]
 }

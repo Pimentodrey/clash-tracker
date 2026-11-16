@@ -317,7 +317,7 @@ function renderAccueil(){
 
 function copyLate(b){
   const late = M.filter(m => m.today < 4).sort((a, b) => a.today - b.today);
-  const txt = `⚔️ Les Lames d'Or, à vos lames ! Decks de guerre pas encore joués aujourd'hui :\n${late.map(m => `• ${m.name} (${m.today}/4)`).join('\n')}\n📊 ${location.origin + location.pathname}`;
+  const txt = `⚔️ Les Lames d'Or, à vos lames ! Decks de guerre pas encore joués aujourd'hui :\n${late.map(m => `• ${m.name} (${m.today}/4)`).join('\n')}`;
   navigator.clipboard.writeText(txt).then(() => b.textContent = 'Copié ✓').catch(() => b.textContent = 'Copie impossible');
 }
 
