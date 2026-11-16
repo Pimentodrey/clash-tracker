@@ -251,8 +251,34 @@ function computeMembers(){
     m.chkWar = m.rate == null ? (m.curDecks > 0 ? 2 : null) : m.rate >= .8 ? 2 : m.rate >= .5 ? 1 : 0;
     m.chkDon = md < 50 ? null : m.donations >= md * .3 ? 2 : m.donations > 0 ? 1 : 0;
     m.chkAct = m.seenDays == null ? 0 : m.seenDays < 2 ? 2 : m.seenDays < 7 ? 1 : 0;
+    // Priorité d'exclusion (plus c'est haut, plus il faut virer)
+    const why = []; let k = 0;
+    if(m.seenDays > 14){ k += 50; why.push(`absent depuis ${Math.round(m.seenDays)} j`); }
+    else if(m.seenDays > 7){ k += 40; why.push(`absent depuis ${Math.round(m.seenDays)} j`); }
+    else if(m.seenDays > 3){ k += 15; why.push(`pas connecté depuis ${Math.round(m.seenDays)} j`); }
+    if(m.rate != null && m.weeks >= 3){
+      if(m.rate < .3){ k += 30; why.push(`seulement ${m.played}/${m.weeks} guerres jouées`); }
+      else if(m.rate < .6){ k += 15; why.push(`${m.played}/${m.weeks} guerres jouées`); }
+    }
+    if(m.trophies < 9000){ k += 10; why.push(`${fmt(m.trophies)} trophées`); }
+    else if(m.trophies < 11000){ k += 5; }
+    m.isNew = m.rate == null || m.weeks < 2;
+    if(m.isNew && m.seenDays < 3) k = Math.min(k, 10);
+    m.kick = (m.role === 'leader' || m.role === 'coLeader') ? 0 : k;
+    m.kickWhy = why;
   });
   return base.sort((a, b) => b.score - a.score).map((m, i) => ({...m, pos: i + 1}));
+}
+
+
+function kickList(limit){
+  const list = M.filter(m => m.kick >= 35).sort((a, b) => b.kick - a.kick);
+  if(!list.length) return '<p class="muted">Personne à virer pour l\'instant 👍</p>';
+  return `<table><tbody>${list.slice(0, limit || 99).map((m, i) => `<tr class="click" data-tag="${esc(m.tag)}" onclick="openMember('${esc(m.tag)}')">
+    <td style="width:28px;color:var(--muted)">${i + 1}</td>
+    <td><b>${esc(m.name)}</b><div class="muted" style="font-size:12px;white-space:normal">${m.kickWhy.join(' · ') || '—'}</div></td>
+    <td class="num">${m.kick >= 60 ? '<span class="tag t-red">À virer</span>' : '<span class="tag t-orange">Dernier avertissement</span>'}</td></tr>`).join('')}</tbody></table>
+    ${limit && list.length > limit ? `<p class="muted" style="margin-bottom:0">+ ${list.length - limit} autre(s) dans l'onglet L'Ordre</p>` : ''}`;
 }
 
 /* ---------- Accueil ---------- */
@@ -304,6 +330,9 @@ function renderAccueil(){
         ${elders === 0 ? `<div class="alert" style="margin:14px 0 0">💡 Le clan n'a <b>aucun aîné</b>. Promouvoir vos meilleurs membres les motive et vous aide à gérer les dons : <b>${M.filter(m => m.role === 'member').slice(0, 5).map(m => esc(m.name)).join(', ')}</b>.</div>` : ''}
       </div>
     </div>
+    <div class="card section" style="border-color:#ef5a6866"><h2>🚪 À virer en priorité <small>du plus urgent au moins urgent · les chefs adjoints et les nouveaux sont protégés</small></h2>
+      ${kickList(6)}
+      <p class="muted" style="font-size:12px;margin-bottom:0">Conseil : vire-les un par un, quand un nouveau joueur arrive, pour ne pas vider le clan.</p></div>
     <div class="grid g2 section">
       <div class="card"><h2>👑 Podium de l'Ordre</h2>
         <div class="podium">${[1, 0, 2].map(i => top3[i] ? `<div class="p p${i + 1}" onclick="openMember('${esc(top3[i].tag)}')"><div class="medal">${['🥇','🥈','🥉'][i]}</div><div class="n">${esc(top3[i].name)}</div><div class="s">${top3[i].score}</div></div>` : '<div></div>').join('')}</div>
@@ -414,8 +443,7 @@ function renderOrdre(){
         <div class="chips">${M.filter(m => m.role === 'member' && m.score >= 60).map(m => `<span class="chip">${esc(m.name)} <b>${m.score}</b></span>`).join('') || '<span class="muted">Aucun pour l\'instant</span>'}</div></div>
       <div class="card"><h2>⬇️ Gradés à secouer <small>aînés/adjoints &lt; 40</small></h2>
         <div class="chips">${M.filter(m => (m.role === 'elder' || m.role === 'coLeader') && m.score < 40).map(m => `<span class="chip">${esc(m.name)} <b>${m.score}</b></span>`).join('') || '<span class="muted">Aucun 👍</span>'}</div></div>
-      <div class="card"><h2>🚪 Inactifs <small>&gt; 7 jours sans connexion</small></h2>
-        <div class="chips">${M.filter(m => m.seenDays > 7 && m.role !== 'leader').sort((a, b) => b.seenDays - a.seenDays).map(m => `<span class="chip">${esc(m.name)} <b>${ago(m.seen)}</b></span>`).join('') || '<span class="muted">Aucun 👍</span>'}</div></div>
+      <div class="card" style="border-color:#ef5a6866"><h2>🚪 À virer en priorité</h2>${kickList()}</div>
     </div>`;
 }
 
